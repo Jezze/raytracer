@@ -636,7 +636,7 @@ int main(int argc, char **argv)
     struct vector3 originy = {0.0, 1.0, 0.0};
     struct vector3 originz = {0.0, 0.0, 1.0};
     struct color white = {1.0, 1.0, 1.0, 0.0};
-    struct color green = {0.5, 1.0, 0.5, 0.3};
+    struct color green = {0.5, 1.0, 0.5, 0.2};
     struct color gray = {0.5, 0.5, 0.5, 0.0};
     struct color black = {0.0, 0.0, 0.0, 0.0};
     struct color brown = {0.5, 0.25, 0.25, 2.0};
