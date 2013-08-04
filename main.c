@@ -101,14 +101,14 @@ static double plane_find_intersection(struct entity *self, struct ray *r)
 
     struct plane *p = (struct plane *)self;
     double a = vector3_dotproduct(&r->direction, &p->normal);
-    struct vector3 v;
+    struct vector3 v = p->normal;
 
     if (!a)
         return -1;
 
-    v = vector3_multiply(&p->normal, p->distance);
-    v = vector3_negative(&v);
-    v = vector3_add(&r->origin, &v);
+    vector3_scalar(&v, p->distance);
+    vector3_negative(&v);
+    vector3_add(&v, &r->origin);
 
     return -1 * vector3_dotproduct(&p->normal, &v) / a;
 
@@ -118,10 +118,14 @@ static struct vector3 sphere_find_normal(struct entity *self, struct vector3 *v)
 {
 
     struct sphere *s = (struct sphere *)self;
-    struct vector3 a = vector3_negative(&s->center);
-    struct vector3 b = vector3_add(v, &a);
+    struct vector3 a = s->center;
+    struct vector3 b = *v;
 
-    return vector3_normalize(&b);
+    vector3_negative(&a);
+    vector3_add(&b, &a);
+    vector3_normalize(&b);
+
+    return b;
 
 }
 
@@ -220,52 +224,48 @@ static void fill_intersections(double *intersections, struct scene *scene, struc
 
 }
 
-static struct color get_color_at(struct vector3 *intersection_position, struct vector3 *intersecting_ray_direction, int index, struct scene *scene)
+static struct color get_color_at(struct ray *r, struct scene *scene, struct entity *entity)
 {
 
     double intersections[128];
     double accuracy = 0.000001;
-    struct entity *entity = scene->entities.items[index];
-    struct vector3 normal = entity->find_normal(entity, intersection_position);
-    struct color final_color;
+    struct vector3 normal = entity->find_normal(entity, &r->origin);
+    struct color color = entity->color;
     unsigned int i;
 
     if (entity->texture == 1)
-        texture_checkerboard(entity, intersection_position);
+        texture_checkerboard(entity, &r->origin);
 
-    final_color = color_scalar(&entity->color, scene->ambientlight);
+    color_scalar(&color, scene->ambientlight);
 
     if (entity->reflection > 0 && entity->reflection <= 1)
     {
 
-        struct vector3 x = vector3_negative(intersecting_ray_direction);
-        double dot1 = vector3_dotproduct(&normal, &x);
-        struct vector3 scalar1 = vector3_multiply(&normal, dot1);
-        struct vector3 add1 = vector3_add(&scalar1, intersecting_ray_direction);
-        struct vector3 scalar2 = vector3_multiply(&add1, 2);
-        struct vector3 add2 = vector3_add(&x, &scalar2);
-        struct vector3 reflection_direction = vector3_normalize(&add2);
-        struct ray ray = {*intersection_position, reflection_direction};
+        struct vector3 scalar = normal;
+        struct ray ray = *r;
 
+        vector3_negative(&ray.direction);
+        vector3_scalar(&scalar, vector3_dotproduct(&scalar, &ray.direction));
+        vector3_add(&scalar, &r->direction);
+        vector3_scalar(&scalar, 2);
+        vector3_add(&ray.direction, &scalar);
+        vector3_normalize(&ray.direction);
         fill_intersections(intersections, scene, &ray);
 
-        int index2 = find_closest(intersections, scene->entities.count);
+        int index = find_closest(intersections, scene->entities.count);
 
-        if (index2 != -1)
+        if (index != -1)
         {
 
-            if (intersections[index2] > accuracy)
-            {
+            struct ray rr = {ray.direction, ray.direction};
+            struct color c;
 
-                struct vector3 p = vector3_multiply(&reflection_direction, intersections[index2]);
-                struct vector3 reflection_intersection_position = vector3_add(intersection_position, &p);
-                struct vector3 reflection_intersecting_ray_direction = reflection_direction;
-                struct color reflection_color = get_color_at(&reflection_intersection_position, &reflection_intersecting_ray_direction, index2, scene);
-                struct color c2 = color_scalar(&reflection_color, entity->reflection);
+            vector3_scalar(&rr.origin, intersections[index]);
+            vector3_add(&rr.origin, &r->origin);
 
-                final_color = color_add(&final_color, &c2);
-
-            }
+            c = get_color_at(&rr, scene, scene->entities.items[index]);
+            color_scalar(&c, entity->reflection);
+            color_add(&color, &c);
 
         }
 
@@ -274,23 +274,25 @@ static struct color get_color_at(struct vector3 *intersection_position, struct v
     for (i = 0; i < scene->lights.count; i++)
     {
 
-        struct vector3 position = scene->lights.items[i]->position;
-        struct vector3 a = vector3_negative(intersection_position);
-        struct vector3 light_direction = vector3_add(&position, &a);
+        struct vector3 a = r->origin;
+        struct vector3 direction = scene->lights.items[i]->position;
+        double angle;
         unsigned int j;
 
-        light_direction = vector3_normalize(&light_direction);
+        vector3_negative(&a);
+        vector3_add(&direction, &a);
+        vector3_normalize(&direction);
 
-        double angle = vector3_dotproduct(&normal, &light_direction);
+        angle = vector3_dotproduct(&normal, &direction);
 
         if (angle > 0)
         {
 
+            struct ray ray = {r->origin, scene->lights.items[i]->position};
             unsigned int shadowed = 0;
-            double magnitude = vector3_magnitude(&light_direction);
-            struct vector3 f = vector3_add(&position, &light_direction);
-            struct ray ray = {*intersection_position, vector3_normalize(&f)};
 
+            vector3_add(&ray.direction, &direction);
+            vector3_normalize(&ray.direction);
             fill_intersections(intersections, scene, &ray);
 
             for (j = 0; j < scene->entities.count; j++)
@@ -299,7 +301,7 @@ static struct color get_color_at(struct vector3 *intersection_position, struct v
                 if (intersections[j] > accuracy)
                 {
 
-                    if (intersections[j] <= magnitude)
+                    if (intersections[j] <= vector3_magnitude(&direction))
                         shadowed = 1;
 
                     break;
@@ -311,30 +313,34 @@ static struct color get_color_at(struct vector3 *intersection_position, struct v
             if (shadowed == 0)
             {
 
-                struct color wc = color_multiply(&entity->color, &scene->lights.items[i]->color);
+                struct color c = entity->color;
 
-                wc = color_scalar(&wc, angle);
-
-                final_color = color_add(&final_color, &wc);
+                color_multiply(&c, &scene->lights.items[i]->color);
+                color_scalar(&c, angle);
+                color_add(&color, &c);
 
                 if (entity->reflection > 0 && entity->reflection <= 1)
                 {
 
-                    struct vector3 y = vector3_negative(intersecting_ray_direction);
-                    double dot1 = vector3_dotproduct(&normal, &y);
-                    struct vector3 scalar1 = vector3_multiply(&normal, dot1);
-                    struct vector3 add1 = vector3_add(&scalar1, intersecting_ray_direction);
-                    struct vector3 scalar2 = vector3_multiply(&add1, 2);
-                    struct vector3 add2 = vector3_add(&y, &scalar2);
-                    struct vector3 reflection_direction = vector3_normalize(&add2);
-                    double specular = vector3_dotproduct(&reflection_direction, &light_direction);
+                    struct vector3 scalar = normal;
+                    struct vector3 y = r->direction;
+
+                    vector3_negative(&y);
+                    vector3_scalar(&scalar, vector3_dotproduct(&scalar, &y));
+                    vector3_add(&scalar, &r->direction);
+                    vector3_scalar(&scalar, 2);
+                    vector3_add(&y, &scalar);
+                    vector3_normalize(&y);
+
+                    double specular = vector3_dotproduct(&y, &direction);
 
                     if (specular > 0)
                     {
 
-                        struct color shine = color_scalar(&scene->lights.items[i]->color, pow(specular, 10) * entity->reflection);
+                        struct color shine = scene->lights.items[i]->color;
 
-                        final_color = color_add(&final_color, &shine);
+                        color_scalar(&shine, pow(specular, 10) * entity->reflection);
+                        color_add(&color, &shine);
 
                     }
 
@@ -346,9 +352,9 @@ static struct color get_color_at(struct vector3 *intersection_position, struct v
 
     }
 
-    color_clip(&final_color);
+    color_clip(&color);
 
-    return final_color;
+    return color;
 
 }
 
@@ -397,15 +403,16 @@ void render(struct scene *scene, struct backend *backend, struct bmp_color *data
             }
 
             struct ray camray;
-            struct vector3 a = vector3_multiply(&scene->camera.right, xa - 0.5);
-            struct vector3 b = vector3_multiply(&scene->camera.down, ya - 0.5);
-            struct vector3 c = vector3_add(&a, &b);
-
-            c = vector3_add(&scene->camera.direction, &c);
+            struct vector3 b = scene->camera.down;
 
             camray.origin = scene->camera.position;
-            camray.direction = vector3_normalize(&c);
+            camray.direction = scene->camera.right;
 
+            vector3_scalar(&camray.direction, xa - 0.5);
+            vector3_scalar(&b, ya - 0.5);
+            vector3_add(&camray.direction, &b);
+            vector3_add(&camray.direction, &scene->camera.direction);
+            vector3_normalize(&camray.direction);
             fill_intersections(intersections, scene, &camray);
 
             int index = find_closest(intersections, scene->entities.count);
@@ -422,9 +429,12 @@ void render(struct scene *scene, struct backend *backend, struct bmp_color *data
             else
             {
 
-                struct vector3 q = vector3_multiply(&camray.direction, intersections[index]);
-                struct vector3 position = vector3_add(&camray.origin, &q);
-                struct color color = get_color_at(&position, &camray.direction, index, scene);
+                struct color color;
+
+                vector3_scalar(&camray.direction, intersections[index]);
+                vector3_add(&camray.origin, &camray.direction);
+
+                color = get_color_at(&camray, scene, scene->entities.items[index]);
 
                 current->r = color.r;
                 current->g = color.g;
@@ -442,14 +452,15 @@ void setup_camera(struct camera *camera, struct vector3 *origin, struct vector3 
 {
 
     struct vector3 position = {3.0, 1.5, -4.0};
-    struct vector3 diff = vector3_subtract(&position, origin);
-    struct vector3 direction = vector3_negative(&diff);
+    struct vector3 direction = position;
     struct vector3 right;
     struct vector3 down;
 
-    direction = vector3_normalize(&direction);
+    vector3_subtract(&direction, origin);
+    vector3_negative(&direction);
+    vector3_normalize(&direction);
     right = vector3_crossproduct(originy, &direction);
-    right = vector3_normalize(&right);
+    vector3_normalize(&right);
     down = vector3_crossproduct(&right, &direction);
 
     camera->position = position;

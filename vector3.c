@@ -16,22 +16,23 @@ double vector3_dotproduct(struct vector3 *v1, struct vector3 *v2)
 
 }
 
-struct vector3 vector3_normalize(struct vector3 *v)
+void vector3_normalize(struct vector3 *v)
 {
 
     double magnitude = vector3_magnitude(v);
-    struct vector3 t = {v->x / magnitude, v->y / magnitude, v->z / magnitude};
 
-    return t;
+    v->x = v->x / magnitude;
+    v->y = v->y / magnitude;
+    v->z = v->z / magnitude;
 
 }
 
-struct vector3 vector3_negative(struct vector3 *v)
+void vector3_negative(struct vector3 *v)
 {
 
-    struct vector3 t = {-v->x, -v->y, -v->z};
-
-    return t;
+    v->x = -v->x;
+    v->y = -v->y;
+    v->z = -v->z;
 
 }
 
@@ -44,30 +45,30 @@ struct vector3 vector3_crossproduct(struct vector3 *v1, struct vector3 *v2)
 
 }
 
-struct vector3 vector3_add(struct vector3 *v1, struct vector3 *v2)
+void vector3_add(struct vector3 *v1, struct vector3 *v2)
 {
 
-    struct vector3 t = {v1->x + v2->x, v1->y + v2->y, v1->z + v2->z};
-
-    return t;
+    v1->x += v2->x;
+    v1->y += v2->y;
+    v1->z += v2->z;
 
 }
 
-struct vector3 vector3_subtract(struct vector3 *v1, struct vector3 *v2)
+void vector3_subtract(struct vector3 *v1, struct vector3 *v2)
 {
 
-    struct vector3 t = {v1->x - v2->x, v1->y - v2->y, v1->z - v2->z};
-
-    return t;
+    v1->x -= v2->x;
+    v1->y -= v2->y;
+    v1->z -= v2->z;
 
 }
 
-struct vector3 vector3_multiply(struct vector3 *v1, double scalar)
+void vector3_scalar(struct vector3 *v, double scalar)
 {
 
-    struct vector3 t = {v1->x * scalar, v1->y * scalar, v1->z * scalar};
-
-    return t;
+    v->x *= scalar;
+    v->y *= scalar;
+    v->z *= scalar;
 
 }
 
