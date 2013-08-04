@@ -49,11 +49,11 @@ struct color
 
 };
 
-struct light
+struct source
 {
 
-    struct vector3 position;
     struct color color;
+    struct vector3 (*get_position)(struct source *self);
 
 };
 
@@ -63,6 +63,14 @@ struct object
     struct color color;
     struct vector3 (*get_normal_at)(struct object *self, struct vector3 *v);
     double (*find_intersection)(struct object *self, struct ray *r);
+
+};
+
+struct light
+{
+
+    struct source base;
+    struct vector3 position;
 
 };
 
@@ -83,6 +91,94 @@ struct sphere
     double radius;
 
 };
+
+static struct vector3 light_get_position(struct source *self)
+{
+
+    struct light *l = (struct light *)self;
+
+    return l->position;
+
+}
+
+static double color_brightness(struct color *color)
+{
+
+    return (color->r + color->g + color->b) / 3;
+
+}
+
+static struct color color_scalar(struct color *color, double scalar)
+{
+
+    struct color c = {color->r * scalar, color->g * scalar, color->b * scalar, color->special};
+
+    return c;
+
+}
+
+static struct color color_add(struct color *c1, struct color *c2)
+{
+
+    struct color c = {c1->r + c2->r, c1->g + c2->g, c1->b + c2->b, c1->special};
+
+    return c;
+
+}
+
+static struct color color_multiply(struct color *c1, struct color *c2)
+{
+
+    struct color c = {c1->r * c2->r, c1->g * c2->g, c1->b * c2->b, c1->special};
+
+    return c;
+
+}
+
+static struct color color_average(struct color *c1, struct color *c2)
+{
+
+    struct color c = {(c1->r + c2->r) / 2, (c1->g + c2->g) / 2, (c1->b + c2->b) / 2, c1->special};
+
+    return c;
+
+}
+
+static void color_clip(struct color *color)
+{
+
+    double alllight = color->r + color->g + color->b;
+    double excesslight = alllight - 3;
+    struct color c;
+
+    if (excesslight > 0)
+    {
+
+        color->r = color->r + excesslight * (color->r / alllight);
+        color->g = color->g + excesslight * (color->g / alllight);
+        color->b = color->b + excesslight * (color->b / alllight);
+
+    }
+
+    if (color->r > 1)
+        color->r = 1;
+
+    if (color->g > 1)
+        color->g = 1;
+
+    if (color->b > 1)
+        color->b = 1;
+
+    if (color->r < 0)
+        color->r = 0;
+
+    if (color->g < 0)
+        color->g = 0;
+
+    if (color->b < 0)
+        color->b = 0;
+
+}
 
 static double vector3_magnitude(struct vector3 *v)
 {
@@ -316,12 +412,104 @@ static int find_closest(double *intersection, unsigned int count)
 
 }
 
-void render(unsigned int w, unsigned int h, struct bmp_color *data, struct camera *camera, unsigned int count, struct object *objects[])
+static struct color get_color_at(struct vector3 *intersection_position, struct vector3 *intersecting_ray_direction, int index, int nobjects, struct object *objects[], int nlights, struct source *lights[], double accuracy, double ambientlight, double intersections[])
+{
+
+    struct color winning_object_color = objects[index]->color;
+    struct vector3 winning_object_normal = objects[index]->get_normal_at(objects[index], intersection_position);
+    struct color final_color = color_scalar(&winning_object_color, ambientlight);
+    unsigned int i;
+
+    for (i = 0; i < nlights; i++)
+    {
+
+        struct vector3 position = lights[i]->get_position(lights[i]);
+        struct vector3 a = vector3_negative(intersection_position);
+        struct vector3 light_direction = vector3_add(&position, &a);
+        unsigned int j;
+
+        light_direction = vector3_normalize(&light_direction);
+
+        double cosine_angle = vector3_dotproduct(&winning_object_normal, &light_direction);
+
+        if (cosine_angle > 0)
+        {
+
+            unsigned int shadowed = 0;
+            double magnitude = vector3_magnitude(&light_direction);
+            struct vector3 f = vector3_add(&position, &light_direction);
+            struct ray shadow_ray = {*intersection_position, vector3_normalize(&f)};
+
+            for (j = 0; j < nobjects && shadowed == 0; j++)
+                intersections[j] = objects[j]->find_intersection(objects[j], &shadow_ray);
+
+            for (j = 0; j < nobjects; j++)
+            {
+
+                if (intersections[j] > accuracy)
+                {
+
+                    if (intersections[j] <= magnitude)
+                        shadowed = 1;
+
+                    break;
+
+                }
+
+            }
+
+            if (shadowed == 0)
+            {
+
+                struct color wc = color_multiply(&winning_object_color, &lights[i]->color);
+
+                wc = color_scalar(&wc, cosine_angle);
+
+                final_color = color_add(&final_color, &wc);
+
+                if (winning_object_color.special > 0 && winning_object_color.special <= 1)
+                {
+
+                    struct vector3 y = vector3_negative(intersecting_ray_direction);
+                    double dot1 = vector3_dotproduct(&winning_object_normal, &y);
+                    struct vector3 scalar1 = vector3_multiply(&winning_object_normal, dot1);
+                    struct vector3 add1 = vector3_add(&scalar1, intersecting_ray_direction);
+                    struct vector3 scalar2 = vector3_multiply(&add1, 2);
+                    struct vector3 add2 = vector3_add(&y, &scalar2);
+                    struct vector3 reflection_direction = vector3_normalize(&add2);
+                    double specular = vector3_dotproduct(&reflection_direction, &light_direction);
+
+                    if (specular > 0)
+                    {
+
+                        struct color shine = color_scalar(&lights[i]->color, pow(specular, 10) * winning_object_color.special);
+
+                        final_color = color_add(&final_color, &shine);
+
+                    }
+
+                }
+
+            }
+
+        }
+
+    }
+
+    color_clip(&final_color);
+
+    return final_color;
+
+}
+
+void render(unsigned int w, unsigned int h, struct bmp_color *data, struct camera *camera, unsigned int nobjects, struct object *objects[], unsigned int nlights, struct source *lights[])
 {
 
     struct color black = {0.0, 0.0, 0.0, 0.0};
-    double *intersections = malloc(sizeof (double) * count);
+    double *intersections = malloc(sizeof (double) * nobjects);
     double aspectratio = (double)w / (double)h;
+    double ambientlight = 0.2;
+    double accuracy = 0.000001;
     unsigned int x;
     unsigned int y;
     double xamnt, yamnt;
@@ -359,26 +547,51 @@ void render(unsigned int w, unsigned int h, struct bmp_color *data, struct camer
 
             }
 
-            struct vector3 cam_ray_origin = camera->position;
-            struct vector3 cam_ray_direction;
+            struct ray camray;
             struct vector3 a = vector3_multiply(&camera->right, xamnt - 0.5);
             struct vector3 b = vector3_multiply(&camera->down, yamnt - 0.5);
             struct vector3 c = vector3_add(&a, &b);
 
             c = vector3_add(&camera->direction, &c);
-            cam_ray_direction = vector3_normalize(&c);
 
-            struct ray cam_ray = {cam_ray_origin, cam_ray_direction};
+            camray.origin = camera->position;
+            camray.direction = vector3_normalize(&c);
 
-            for (i = 0; i < count; i++)
-                intersections[i] = objects[i]->find_intersection(objects[i], &cam_ray);
+            for (i = 0; i < nobjects; i++)
+                intersections[i] = objects[i]->find_intersection(objects[i], &camray);
 
-            int index = find_closest(intersections, count);
-            struct color *cc = (index == - 1) ? &black : &objects[index]->color;
+            int index = find_closest(intersections, nobjects);
 
-            current->r = cc->r;
-            current->g = cc->g;
-            current->b = cc->b;
+            if (index == -1)
+            {
+
+                current->r = black.r;
+                current->g = black.g;
+                current->b = black.b;
+
+            }
+
+            else
+            {
+
+                current->r = objects[index]->color.r;
+                current->g = objects[index]->color.g;
+                current->b = objects[index]->color.b;
+
+                if (intersections[index] > accuracy)
+                {
+
+                    struct vector3 q = vector3_multiply(&camray.direction, intersections[index]);
+                    struct vector3 intersection_position = vector3_add(&camray.origin, &q);
+                    struct color intersection_color = get_color_at(&intersection_position, &camray.direction, index, nobjects, objects, nlights, lights, accuracy, ambientlight, intersections);
+
+                    current->r = intersection_color.r;
+                    current->g = intersection_color.g;
+                    current->b = intersection_color.b;
+
+                }
+
+            }
 
         }
 
@@ -396,10 +609,15 @@ int main(int argc, char **argv)
     unsigned int dpi = 72;
     struct bmp_color *data = malloc(sizeof (struct bmp_color) * w * h);
     struct vector3 origin = {0.0, 0.0, 0.0};
-    struct vector3 x = {1.0, 0.0, 0.0};
-    struct vector3 y = {0.0, 1.0, 0.0};
-    struct vector3 z = {0.0, 0.0, 1.0};
-    struct vector3 lookat = {0.0, 0.0, 0.0};
+    struct vector3 originx = {1.0, 0.0, 0.0};
+    struct vector3 originy = {0.0, 1.0, 0.0};
+    struct vector3 originz = {0.0, 0.0, 1.0};
+    struct color white = {1.0, 1.0, 1.0, 0.0};
+    struct color green = {0.5, 1.0, 0.5, 0.3};
+    struct color gray = {0.5, 0.5, 0.5, 0.0};
+    struct color black = {0.0, 0.0, 0.0, 0.0};
+    struct color brown = {0.5, 0.25, 0.25, 0.0};
+    struct vector3 lookat = origin;
     struct vector3 campos = {3.0, 1.5, -4.0};
     struct vector3 diff_btw = vector3_subtract(&campos, &lookat);
 
@@ -407,27 +625,21 @@ int main(int argc, char **argv)
 
     camdir = vector3_normalize(&camdir);
 
-    struct vector3 camright = vector3_crossproduct(&y, &camdir);
+    struct vector3 camright = vector3_crossproduct(&originy, &camdir);
 
     camright = vector3_normalize(&camright);
 
     struct vector3 camdown = vector3_crossproduct(&camright, &camdir);
-    struct camera scene_cam = {campos, camdir, camright, camdown};
+    struct camera camera = {campos, camdir, camright, camdown};
 
-    struct color white_light = {1.0, 1.0, 1.0, 0.0};
-    struct color pretty_green = {0.5, 1.0, 0.5, 0.3};
-    struct color gray = {0.5, 0.5, 0.5, 0.0};
-    struct color black = {0.0, 0.0, 0.0, 0.0};
-    struct color maroon = {0.5, 0.25, 0.25, 0.0};
+    struct light light00 = {{white, light_get_position}, {-7.0, 10.0, -10.0}};
+    struct sphere sphere00 = {{green, sphere_get_normal_at, sphere_find_intersection}, origin, 1.0};
+    struct plane plane00 = {{brown, plane_get_normal_at, plane_find_intersection}, originy, -1.0};
 
-    struct vector3 light_position = {-7.0, 10.0, -10.0};
-    struct light scene_light = {light_position, white_light};
+    struct object *objects[] = {&sphere00.base, &plane00.base};
+    struct source *lights[] = {&light00.base};
 
-    struct sphere scene_sphere = {{pretty_green, sphere_get_normal_at, sphere_find_intersection}, origin, 1.0};
-    struct plane scene_plane = {{maroon, plane_get_normal_at, plane_find_intersection}, y, -1.0};
-    struct object *scene_objects[] = {&scene_sphere.base, &scene_plane.base};
-
-    render(w, h, data, &scene_cam, 2, scene_objects);
+    render(w, h, data, &camera, 2, objects, 1, lights);
     save("scene.bmp", w, h, dpi, w * h, data);
     free(data);
 
