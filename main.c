@@ -3,7 +3,7 @@
 #include <string.h>
 #include <math.h>
 
-struct rgbtype
+struct bmp_color
 {
 
     double r;
@@ -12,7 +12,7 @@ struct rgbtype
 
 };
 
-struct vector
+struct vector3
 {
 
     double x;
@@ -24,18 +24,18 @@ struct vector
 struct ray
 {
 
-    struct vector origin;
-    struct vector direction;
+    struct vector3 origin;
+    struct vector3 direction;
 
 };
 
 struct camera
 {
 
-    struct vector position;
-    struct vector direction;
-    struct vector right;
-    struct vector down;
+    struct vector3 position;
+    struct vector3 direction;
+    struct vector3 right;
+    struct vector3 down;
 
 };
 
@@ -52,7 +52,7 @@ struct color
 struct light
 {
 
-    struct vector position;
+    struct vector3 position;
     struct color color;
 
 };
@@ -61,7 +61,7 @@ struct object
 {
 
     struct color color;
-    struct vector (*get_normal_at)(struct object *self, struct vector *v);
+    struct vector3 (*get_normal_at)(struct object *self, struct vector3 *v);
     double (*find_intersection)(struct object *self, struct ray *r);
 
 };
@@ -70,7 +70,7 @@ struct plane
 {
 
     struct object base;
-    struct vector normal;
+    struct vector3 normal;
     double distance;
 
 };
@@ -79,81 +79,81 @@ struct sphere
 {
 
     struct object base;
-    struct vector center;
+    struct vector3 center;
     double radius;
 
 };
 
-static double vector_magnitude(struct vector *v)
+static double vector3_magnitude(struct vector3 *v)
 {
 
     return sqrt((v->x * v->x) + (v->y * v->y) + (v->z * v->z));
 
 }
 
-static double vector_dotproduct(struct vector *v1, struct vector *v2)
+static double vector3_dotproduct(struct vector3 *v1, struct vector3 *v2)
 {
 
     return v1->x * v2->x + v1->y * v2->y + v1->z * v2->z;
 
 }
 
-static struct vector vector_normalize(struct vector *v)
+static struct vector3 vector3_normalize(struct vector3 *v)
 {
 
-    double magnitude = vector_magnitude(v);
-    struct vector t = {v->x / magnitude, v->y / magnitude, v->z / magnitude};
+    double magnitude = vector3_magnitude(v);
+    struct vector3 t = {v->x / magnitude, v->y / magnitude, v->z / magnitude};
 
     return t;
 
 }
 
-static struct vector vector_negative(struct vector *v)
+static struct vector3 vector3_negative(struct vector3 *v)
 {
 
-    struct vector t = {-v->x, -v->y, -v->z};
+    struct vector3 t = {-v->x, -v->y, -v->z};
 
     return t;
 
 }
 
-static struct vector vector_crossproduct(struct vector *v1, struct vector *v2)
+static struct vector3 vector3_crossproduct(struct vector3 *v1, struct vector3 *v2)
 {
 
-    struct vector t = {v1->y * v2->z - v1->z * v2->y, v1->z * v2->x - v1->x * v2->z, v1->x * v2->y - v1->y * v2->x};
+    struct vector3 t = {v1->y * v2->z - v1->z * v2->y, v1->z * v2->x - v1->x * v2->z, v1->x * v2->y - v1->y * v2->x};
 
     return t;
 
 }
 
-static struct vector vector_add(struct vector *v1, struct vector *v2)
+static struct vector3 vector3_add(struct vector3 *v1, struct vector3 *v2)
 {
 
-    struct vector t = {v1->x + v2->x, v1->y + v2->y, v1->z + v2->z};
+    struct vector3 t = {v1->x + v2->x, v1->y + v2->y, v1->z + v2->z};
 
     return t;
 
 }
 
-static struct vector vector_subtract(struct vector *v1, struct vector *v2)
+static struct vector3 vector3_subtract(struct vector3 *v1, struct vector3 *v2)
 {
 
-    struct vector t = {v1->x - v2->x, v1->y - v2->y, v1->z - v2->z};
+    struct vector3 t = {v1->x - v2->x, v1->y - v2->y, v1->z - v2->z};
 
     return t;
 
 }
 
-static struct vector vector_multiply(struct vector *v1, double scalar)
+static struct vector3 vector3_multiply(struct vector3 *v1, double scalar)
 {
 
-    struct vector t = {v1->x * scalar, v1->y * scalar, v1->z * scalar};
+    struct vector3 t = {v1->x * scalar, v1->y * scalar, v1->z * scalar};
 
     return t;
 
 }
 
-static struct vector plane_get_normal_at(struct object *self, struct vector *v)
+static struct vector3 plane_get_normal_at(struct object *self, struct vector3 *v)
 {
 
     struct plane *p = (struct plane *)self;
@@ -166,28 +166,28 @@ static double plane_find_intersection(struct object *self, struct ray *r)
 {
 
     struct plane *p = (struct plane *)self;
-    double a = vector_dotproduct(&r->direction, &p->normal);
-    struct vector v;
+    double a = vector3_dotproduct(&r->direction, &p->normal);
+    struct vector3 v;
 
     if (!a)
         return -1;
 
-    v = vector_multiply(&p->normal, p->distance);
-    v = vector_negative(&v);
-    v = vector_add(&r->origin, &v);
+    v = vector3_multiply(&p->normal, p->distance);
+    v = vector3_negative(&v);
+    v = vector3_add(&r->origin, &v);
 
-    return -1 * vector_dotproduct(&p->normal, &v) / a;
+    return -1 * vector3_dotproduct(&p->normal, &v) / a;
 
 }
 
-static struct vector sphere_get_normal_at(struct object *self, struct vector *v)
+static struct vector3 sphere_get_normal_at(struct object *self, struct vector3 *v)
 {
 
     struct sphere *s = (struct sphere *)self;
-    struct vector a = vector_negative(&s->center);
-    struct vector b = vector_add(v, &a);
+    struct vector3 a = vector3_negative(&s->center);
+    struct vector3 b = vector3_add(v, &a);
 
-    return vector_normalize(&b);
+    return vector3_normalize(&b);
 
 }
 
@@ -195,46 +195,24 @@ static double sphere_find_intersection(struct object *self, struct ray *r)
 {
 
     struct sphere *s = (struct sphere *)self;
-
-    struct vector ray_origin = r->origin;
-    struct vector ray_direction = r->direction;
-    struct vector sphere_center = s->center;
-
-    double ray_origin_x = ray_origin.x;
-    double ray_origin_y = ray_origin.y;
-    double ray_origin_z = ray_origin.z;
-
-    double ray_direction_x = ray_direction.x;
-    double ray_direction_y = ray_direction.y;
-    double ray_direction_z = ray_direction.z;
-
-    double sphere_center_x = sphere_center.x;
-    double sphere_center_y = sphere_center.y;
-    double sphere_center_z = sphere_center.z;
-
-    double a = 1;
-
-    double b = (2 * (ray_origin_x - sphere_center_x) * ray_direction_x) + (2 * (ray_origin_y - sphere_center_y) * ray_direction_y) + (2 * (ray_origin_z - sphere_center_z) * ray_direction_z);
-    double c = pow(ray_origin_x - sphere_center_x, 2) + pow(ray_origin_y - sphere_center_y, 2) + pow(ray_origin_z - sphere_center_z, 2) - (s->radius * s->radius);
+    double b = (2 * (r->origin.x - s->center.x) * r->direction.x) + (2 * (r->origin.y - s->center.y) * r->direction.y) + (2 * (r->origin.z - s->center.z) * r->direction.z);
+    double c = pow(r->origin.x - s->center.x, 2) + pow(r->origin.y - s->center.y, 2) + pow(r->origin.z - s->center.z, 2) - (s->radius * s->radius);
     double discriminant = b * b - 4 * c;
+    double root;
 
-    if (discriminant > 0)
-    {
+    if (discriminant <= 0)
+        return -1;
 
-        double root_1 = ((-1 * b - sqrt(discriminant)) / 2) - 0.000001;
+    root = ((-1 * b - sqrt(discriminant)) / 2) - 0.000001;
 
-        if (root_1 > 0)
-            return root_1;
+    if (root > 0)
+        return root;
 
-        return ((sqrt(discriminant) - b) / 2) - 0.000001;
-
-    }
-
-    return -1;
+    return ((sqrt(discriminant) - b) / 2) - 0.000001;
 
 }
 
-void save(const char *name, int w, int h, int dpi, unsigned int count, struct rgbtype *data)
+void save(const char *name, int w, int h, int dpi, unsigned int count, struct bmp_color *data)
 {
 
     FILE *f;
@@ -285,7 +263,7 @@ void save(const char *name, int w, int h, int dpi, unsigned int count, struct rg
     for (i = 0; i < count; i++)
     {
 
-        struct rgbtype rgb = data[i];
+        struct bmp_color rgb = data[i];
         double r = (data[i].r) * 255;
         double g = (data[i].g) * 255;
         double b = (data[i].b) * 255;
@@ -299,7 +277,7 @@ void save(const char *name, int w, int h, int dpi, unsigned int count, struct rg
 
 }
 
-static int winning_object_index(double *intersection, unsigned int count)
+static int find_closest(double *intersection, unsigned int count)
 {
 
     unsigned int index = -1;
@@ -338,20 +316,24 @@ static int winning_object_index(double *intersection, unsigned int count)
 
 }
 
-void render(unsigned int w, unsigned int h, struct rgbtype *data, struct camera *camera, unsigned int count, struct object *objects[])
+void render(unsigned int w, unsigned int h, struct bmp_color *data, struct camera *camera, unsigned int count, struct object *objects[])
 {
 
+    struct color black = {0.0, 0.0, 0.0, 0.0};
+    double *intersections = malloc(sizeof (double) * count);
     double aspectratio = (double)w / (double)h;
     unsigned int x;
     unsigned int y;
     double xamnt, yamnt;
-    unsigned int index;
+    unsigned int i;
 
     for (x = 0; x < w; x++)
     {
 
         for (y = 0; y < h; y++)
         {
+
+            struct bmp_color *current = &data[y * w + x];
 
             if (w > h)
             {
@@ -377,56 +359,32 @@ void render(unsigned int w, unsigned int h, struct rgbtype *data, struct camera 
 
             }
 
-            struct vector cam_ray_origin = camera->position;
-            struct vector cam_ray_direction;
-            struct vector a, b, c;
+            struct vector3 cam_ray_origin = camera->position;
+            struct vector3 cam_ray_direction;
+            struct vector3 a = vector3_multiply(&camera->right, xamnt - 0.5);
+            struct vector3 b = vector3_multiply(&camera->down, yamnt - 0.5);
+            struct vector3 c = vector3_add(&a, &b);
 
-            a = vector_multiply(&camera->right, xamnt - 0.5);
-            b = vector_multiply(&camera->down, yamnt - 0.5);
-            c = vector_add(&a, &b);
-            c = vector_add(&camera->direction, &c);
-            cam_ray_direction = vector_normalize(&c);
+            c = vector3_add(&camera->direction, &c);
+            cam_ray_direction = vector3_normalize(&c);
 
             struct ray cam_ray = {cam_ray_origin, cam_ray_direction};
 
-            double intersections[2000];
+            for (i = 0; i < count; i++)
+                intersections[i] = objects[i]->find_intersection(objects[i], &cam_ray);
 
-            for (index = 0; index < count; index++)
-            {
+            int index = find_closest(intersections, count);
+            struct color *cc = (index == - 1) ? &black : &objects[index]->color;
 
-                intersections[index] = objects[index]->find_intersection(objects[index], &cam_ray);
-
-            }
-
-            int index_of_winning_object = winning_object_index(intersections, 2);
-
-            unsigned int current = y * w + x;
-
-            if (index_of_winning_object == -1)
-            {
-
-                data[current].r = 0;
-                data[current].g = 0;
-                data[current].b = 0;
-
-            }
-
-            else
-            {
-
-                struct color this_color = objects[index_of_winning_object]->color;
-
-                data[current].r = this_color.r;
-                data[current].g = this_color.g;
-                data[current].b = this_color.b;
-
-               
-
-            }
+            current->r = cc->r;
+            current->g = cc->g;
+            current->b = cc->b;
 
         }
 
     }
+
+    free(intersections);
 
 }
 
@@ -436,24 +394,24 @@ int main(int argc, char **argv)
     unsigned int w = 640;
     unsigned int h = 480;
     unsigned int dpi = 72;
-    struct rgbtype *data = malloc(sizeof (struct rgbtype) * w * h);
-    struct vector origin = {0.0, 0.0, 0.0};
-    struct vector x = {1.0, 0.0, 0.0};
-    struct vector y = {0.0, 1.0, 0.0};
-    struct vector z = {0.0, 0.0, 1.0};
-    struct vector lookat = {0.0, 0.0, 0.0};
-    struct vector campos = {3.0, 1.5, -4.0};
-    struct vector diff_btw = vector_subtract(&campos, &lookat);
+    struct bmp_color *data = malloc(sizeof (struct bmp_color) * w * h);
+    struct vector3 origin = {0.0, 0.0, 0.0};
+    struct vector3 x = {1.0, 0.0, 0.0};
+    struct vector3 y = {0.0, 1.0, 0.0};
+    struct vector3 z = {0.0, 0.0, 1.0};
+    struct vector3 lookat = {0.0, 0.0, 0.0};
+    struct vector3 campos = {3.0, 1.5, -4.0};
+    struct vector3 diff_btw = vector3_subtract(&campos, &lookat);
 
-    struct vector camdir = vector_negative(&diff_btw);
+    struct vector3 camdir = vector3_negative(&diff_btw);
 
-    camdir = vector_normalize(&camdir);
+    camdir = vector3_normalize(&camdir);
 
-    struct vector camright = vector_crossproduct(&y, &camdir);
+    struct vector3 camright = vector3_crossproduct(&y, &camdir);
 
-    camright = vector_normalize(&camright);
+    camright = vector3_normalize(&camright);
 
-    struct vector camdown = vector_crossproduct(&camright, &camdir);
+    struct vector3 camdown = vector3_crossproduct(&camright, &camdir);
     struct camera scene_cam = {campos, camdir, camright, camdown};
 
     struct color white_light = {1.0, 1.0, 1.0, 0.0};
@@ -462,7 +420,7 @@ int main(int argc, char **argv)
     struct color black = {0.0, 0.0, 0.0, 0.0};
     struct color maroon = {0.5, 0.25, 0.25, 0.0};
 
-    struct vector light_position = {-7.0, 10.0, -10.0};
+    struct vector3 light_position = {-7.0, 10.0, -10.0};
     struct light scene_light = {light_position, white_light};
 
     struct sphere scene_sphere = {{pretty_green, sphere_get_normal_at, sphere_find_intersection}, origin, 1.0};
