@@ -2,24 +2,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-
-struct bmp_color
-{
-
-    double r;
-    double g;
-    double b;
-
-};
-
-struct vector3
-{
-
-    double x;
-    double y;
-    double z;
-
-};
+#include "vector3.h"
+#include "color.h"
+#include "bmp.h"
 
 struct ray
 {
@@ -39,30 +24,20 @@ struct camera
 
 };
 
-struct color
-{
-
-    double r;
-    double g;
-    double b;
-    double special;
-
-};
-
 struct source
 {
 
     struct color color;
-    struct vector3 (*get_position)(struct source *self);
+    struct vector3 position;
 
 };
 
-struct object
+struct entity
 {
 
     struct color color;
-    struct vector3 (*get_normal_at)(struct object *self, struct vector3 *v);
-    double (*find_intersection)(struct object *self, struct ray *r);
+    struct vector3 (*get_normal_at)(struct entity *self, struct vector3 *v);
+    double (*find_intersection)(struct entity *self, struct ray *r);
 
 };
 
@@ -70,14 +45,13 @@ struct light
 {
 
     struct source base;
-    struct vector3 position;
 
 };
 
 struct plane
 {
 
-    struct object base;
+    struct entity base;
     struct vector3 normal;
     double distance;
 
@@ -86,170 +60,13 @@ struct plane
 struct sphere
 {
 
-    struct object base;
+    struct entity base;
     struct vector3 center;
     double radius;
 
 };
 
-static struct vector3 light_get_position(struct source *self)
-{
-
-    struct light *l = (struct light *)self;
-
-    return l->position;
-
-}
-
-static double color_brightness(struct color *color)
-{
-
-    return (color->r + color->g + color->b) / 3;
-
-}
-
-static struct color color_scalar(struct color *color, double scalar)
-{
-
-    struct color c = {color->r * scalar, color->g * scalar, color->b * scalar, color->special};
-
-    return c;
-
-}
-
-static struct color color_add(struct color *c1, struct color *c2)
-{
-
-    struct color c = {c1->r + c2->r, c1->g + c2->g, c1->b + c2->b, c1->special};
-
-    return c;
-
-}
-
-static struct color color_multiply(struct color *c1, struct color *c2)
-{
-
-    struct color c = {c1->r * c2->r, c1->g * c2->g, c1->b * c2->b, c1->special};
-
-    return c;
-
-}
-
-static struct color color_average(struct color *c1, struct color *c2)
-{
-
-    struct color c = {(c1->r + c2->r) / 2, (c1->g + c2->g) / 2, (c1->b + c2->b) / 2, c1->special};
-
-    return c;
-
-}
-
-static void color_clip(struct color *color)
-{
-
-    double alllight = color->r + color->g + color->b;
-    double excesslight = alllight - 3;
-    struct color c;
-
-    if (excesslight > 0)
-    {
-
-        color->r = color->r + excesslight * (color->r / alllight);
-        color->g = color->g + excesslight * (color->g / alllight);
-        color->b = color->b + excesslight * (color->b / alllight);
-
-    }
-
-    if (color->r > 1)
-        color->r = 1;
-
-    if (color->g > 1)
-        color->g = 1;
-
-    if (color->b > 1)
-        color->b = 1;
-
-    if (color->r < 0)
-        color->r = 0;
-
-    if (color->g < 0)
-        color->g = 0;
-
-    if (color->b < 0)
-        color->b = 0;
-
-}
-
-static double vector3_magnitude(struct vector3 *v)
-{
-
-    return sqrt((v->x * v->x) + (v->y * v->y) + (v->z * v->z));
-
-}
-
-static double vector3_dotproduct(struct vector3 *v1, struct vector3 *v2)
-{
-
-    return v1->x * v2->x + v1->y * v2->y + v1->z * v2->z;
-
-}
-
-static struct vector3 vector3_normalize(struct vector3 *v)
-{
-
-    double magnitude = vector3_magnitude(v);
-    struct vector3 t = {v->x / magnitude, v->y / magnitude, v->z / magnitude};
-
-    return t;
-
-}
-
-static struct vector3 vector3_negative(struct vector3 *v)
-{
-
-    struct vector3 t = {-v->x, -v->y, -v->z};
-
-    return t;
-
-}
-
-static struct vector3 vector3_crossproduct(struct vector3 *v1, struct vector3 *v2)
-{
-
-    struct vector3 t = {v1->y * v2->z - v1->z * v2->y, v1->z * v2->x - v1->x * v2->z, v1->x * v2->y - v1->y * v2->x};
-
-    return t;
-
-}
-
-static struct vector3 vector3_add(struct vector3 *v1, struct vector3 *v2)
-{
-
-    struct vector3 t = {v1->x + v2->x, v1->y + v2->y, v1->z + v2->z};
-
-    return t;
-
-}
-
-static struct vector3 vector3_subtract(struct vector3 *v1, struct vector3 *v2)
-{
-
-    struct vector3 t = {v1->x - v2->x, v1->y - v2->y, v1->z - v2->z};
-
-    return t;
-
-}
-
-static struct vector3 vector3_multiply(struct vector3 *v1, double scalar)
-{
-
-    struct vector3 t = {v1->x * scalar, v1->y * scalar, v1->z * scalar};
-
-    return t;
-
-}
-
-static struct vector3 plane_get_normal_at(struct object *self, struct vector3 *v)
+static struct vector3 plane_get_normal_at(struct entity *self, struct vector3 *v)
 {
 
     struct plane *p = (struct plane *)self;
@@ -258,7 +75,7 @@ static struct vector3 plane_get_normal_at(struct object *self, struct vector3 *v
 
 }
 
-static double plane_find_intersection(struct object *self, struct ray *r)
+static double plane_find_intersection(struct entity *self, struct ray *r)
 {
 
     struct plane *p = (struct plane *)self;
@@ -276,7 +93,7 @@ static double plane_find_intersection(struct object *self, struct ray *r)
 
 }
 
-static struct vector3 sphere_get_normal_at(struct object *self, struct vector3 *v)
+static struct vector3 sphere_get_normal_at(struct entity *self, struct vector3 *v)
 {
 
     struct sphere *s = (struct sphere *)self;
@@ -287,7 +104,7 @@ static struct vector3 sphere_get_normal_at(struct object *self, struct vector3 *
 
 }
 
-static double sphere_find_intersection(struct object *self, struct ray *r)
+static double sphere_find_intersection(struct entity *self, struct ray *r)
 {
 
     struct sphere *s = (struct sphere *)self;
@@ -305,71 +122,6 @@ static double sphere_find_intersection(struct object *self, struct ray *r)
         return root;
 
     return ((sqrt(discriminant) - b) / 2) - 0.000001;
-
-}
-
-void save(const char *name, int w, int h, int dpi, unsigned int count, struct bmp_color *data)
-{
-
-    FILE *f;
-    unsigned int s = 4 * count;
-    unsigned int filesize = 54 + s;
-    unsigned int i;
-    double factor = 39.375;
-    int m = (int)factor;
-    int ppm = dpi * m;
-    unsigned char bmpfileheader[14] = {'B', 'M', 0, 0, 0, 0, 0, 0, 0, 0, 54, 0, 0, 0};
-    unsigned char bmpinfoheader[40] = {40, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 24, 0};
-
-    bmpfileheader[2] = (unsigned char)(filesize);
-    bmpfileheader[3] = (unsigned char)(filesize >> 8);
-    bmpfileheader[4] = (unsigned char)(filesize >> 16);
-    bmpfileheader[5] = (unsigned char)(filesize >> 24);
-
-    bmpinfoheader[4] = (unsigned char)(w);
-    bmpinfoheader[5] = (unsigned char)(w >> 8);
-    bmpinfoheader[6] = (unsigned char)(w >> 16);
-    bmpinfoheader[7] = (unsigned char)(w >> 24);
-
-    bmpinfoheader[8] = (unsigned char)(h);
-    bmpinfoheader[9] = (unsigned char)(h >> 8);
-    bmpinfoheader[10] = (unsigned char)(h >> 16);
-    bmpinfoheader[11] = (unsigned char)(h >> 24);
-
-    bmpinfoheader[21] = (unsigned char)(s);
-    bmpinfoheader[22] = (unsigned char)(s >> 8);
-    bmpinfoheader[23] = (unsigned char)(s >> 16);
-    bmpinfoheader[24] = (unsigned char)(s >> 24);
-
-    bmpinfoheader[25] = (unsigned char)(ppm);
-    bmpinfoheader[26] = (unsigned char)(ppm >> 8);
-    bmpinfoheader[27] = (unsigned char)(ppm >> 16);
-    bmpinfoheader[28] = (unsigned char)(ppm >> 24);
-
-    bmpinfoheader[29] = (unsigned char)(ppm);
-    bmpinfoheader[30] = (unsigned char)(ppm >> 8);
-    bmpinfoheader[31] = (unsigned char)(ppm >> 16);
-    bmpinfoheader[32] = (unsigned char)(ppm >> 24);
-
-    f = fopen(name, "wb");
-
-    fwrite(bmpfileheader, 1, 14, f);
-    fwrite(bmpinfoheader, 1, 40, f);
-
-    for (i = 0; i < count; i++)
-    {
-
-        struct bmp_color rgb = data[i];
-        double r = (data[i].r) * 255;
-        double g = (data[i].g) * 255;
-        double b = (data[i].b) * 255;
-        unsigned char color[3] = {(int)floor(b), (int)floor(g), (int)floor(r)};
-
-        fwrite(color, 1, 3, f);
-
-    }
-
-    fclose(f);
 
 }
 
@@ -412,15 +164,15 @@ static int find_closest(double *intersection, unsigned int count)
 
 }
 
-static struct color get_color_at(struct vector3 *intersection_position, struct vector3 *intersecting_ray_direction, int index, int nobjects, struct object *objects[], int nlights, struct source *lights[], double accuracy, double ambientlight)
+static struct color get_color_at(struct vector3 *intersection_position, struct vector3 *intersecting_ray_direction, int index, int nentities, struct entity *entities[], int nlights, struct source *lights[], double accuracy, double ambientlight)
 {
 
     double intersections[128];
-    struct color winning_object_color = objects[index]->color;
-    struct vector3 winning_object_normal = objects[index]->get_normal_at(objects[index], intersection_position);
+    struct color winning_entity_color = entities[index]->color;
+    struct vector3 winning_entity_normal = entities[index]->get_normal_at(entities[index], intersection_position);
     unsigned int i;
 
-    if (winning_object_color.special == 2)
+    if (winning_entity_color.special == 2)
     {
 
         int square = (int)floor(intersection_position->x) + (int)floor(intersection_position->z);
@@ -428,31 +180,31 @@ static struct color get_color_at(struct vector3 *intersection_position, struct v
         if ((square % 2) == 0)
         {
 
-            winning_object_color.r = 0.0;
-            winning_object_color.g = 0.0;
-            winning_object_color.b = 0.0;
+            winning_entity_color.r = 0.0;
+            winning_entity_color.g = 0.0;
+            winning_entity_color.b = 0.0;
 
         }
 
         else
         {
 
-            winning_object_color.r = 1.0;
-            winning_object_color.g = 1.0;
-            winning_object_color.b = 1.0;
+            winning_entity_color.r = 1.0;
+            winning_entity_color.g = 1.0;
+            winning_entity_color.b = 1.0;
 
         }
 
     }
 
-    struct color final_color = color_scalar(&winning_object_color, ambientlight);
+    struct color final_color = color_scalar(&winning_entity_color, ambientlight);
 
-    if (winning_object_color.special > 0 && winning_object_color.special <= 1)
+    if (winning_entity_color.special > 0 && winning_entity_color.special <= 1)
     {
 
         struct vector3 x = vector3_negative(intersecting_ray_direction);
-        double dot1 = vector3_dotproduct(&winning_object_normal, &x);
-        struct vector3 scalar1 = vector3_multiply(&winning_object_normal, dot1);
+        double dot1 = vector3_dotproduct(&winning_entity_normal, &x);
+        struct vector3 scalar1 = vector3_multiply(&winning_entity_normal, dot1);
         struct vector3 add1 = vector3_add(&scalar1, intersecting_ray_direction);
         struct vector3 scalar2 = vector3_multiply(&add1, 2);
         struct vector3 add2 = vector3_add(&x, &scalar2);
@@ -461,10 +213,10 @@ static struct color get_color_at(struct vector3 *intersection_position, struct v
 
         struct ray reflection_ray = {*intersection_position, reflection_direction};
 
-        for (j = 0; j < nobjects; j++)
-            intersections[j] = objects[j]->find_intersection(objects[j], &reflection_ray);
+        for (j = 0; j < nentities; j++)
+            intersections[j] = entities[j]->find_intersection(entities[j], &reflection_ray);
 
-        int index2 = find_closest(intersections, nobjects);
+        int index2 = find_closest(intersections, nentities);
 
         if (index2 != -1)
         {
@@ -475,8 +227,8 @@ static struct color get_color_at(struct vector3 *intersection_position, struct v
                 struct vector3 p = vector3_multiply(&reflection_direction, intersections[index2]);
                 struct vector3 reflection_intersection_position = vector3_add(intersection_position, &p);
                 struct vector3 reflection_intersecting_ray_direction = reflection_direction;
-                struct color reflection_color = get_color_at(&reflection_intersection_position, &reflection_intersecting_ray_direction, index2, nobjects, objects, nlights, lights, accuracy, ambientlight);
-                struct color c2 = color_scalar(&reflection_color, winning_object_color.special);
+                struct color reflection_color = get_color_at(&reflection_intersection_position, &reflection_intersecting_ray_direction, index2, nentities, entities, nlights, lights, accuracy, ambientlight);
+                struct color c2 = color_scalar(&reflection_color, winning_entity_color.special);
 
                 final_color = color_add(&final_color, &c2);
 
@@ -489,14 +241,14 @@ static struct color get_color_at(struct vector3 *intersection_position, struct v
     for (i = 0; i < nlights; i++)
     {
 
-        struct vector3 position = lights[i]->get_position(lights[i]);
+        struct vector3 position = lights[i]->position;
         struct vector3 a = vector3_negative(intersection_position);
         struct vector3 light_direction = vector3_add(&position, &a);
         unsigned int j;
 
         light_direction = vector3_normalize(&light_direction);
 
-        double cosine_angle = vector3_dotproduct(&winning_object_normal, &light_direction);
+        double cosine_angle = vector3_dotproduct(&winning_entity_normal, &light_direction);
 
         if (cosine_angle > 0)
         {
@@ -506,10 +258,10 @@ static struct color get_color_at(struct vector3 *intersection_position, struct v
             struct vector3 f = vector3_add(&position, &light_direction);
             struct ray shadow_ray = {*intersection_position, vector3_normalize(&f)};
 
-            for (j = 0; j < nobjects && shadowed == 0; j++)
-                intersections[j] = objects[j]->find_intersection(objects[j], &shadow_ray);
+            for (j = 0; j < nentities && shadowed == 0; j++)
+                intersections[j] = entities[j]->find_intersection(entities[j], &shadow_ray);
 
-            for (j = 0; j < nobjects; j++)
+            for (j = 0; j < nentities; j++)
             {
 
                 if (intersections[j] > accuracy)
@@ -527,18 +279,18 @@ static struct color get_color_at(struct vector3 *intersection_position, struct v
             if (shadowed == 0)
             {
 
-                struct color wc = color_multiply(&winning_object_color, &lights[i]->color);
+                struct color wc = color_multiply(&winning_entity_color, &lights[i]->color);
 
                 wc = color_scalar(&wc, cosine_angle);
 
                 final_color = color_add(&final_color, &wc);
 
-                if (winning_object_color.special > 0 && winning_object_color.special <= 1)
+                if (winning_entity_color.special > 0 && winning_entity_color.special <= 1)
                 {
 
                     struct vector3 y = vector3_negative(intersecting_ray_direction);
-                    double dot1 = vector3_dotproduct(&winning_object_normal, &y);
-                    struct vector3 scalar1 = vector3_multiply(&winning_object_normal, dot1);
+                    double dot1 = vector3_dotproduct(&winning_entity_normal, &y);
+                    struct vector3 scalar1 = vector3_multiply(&winning_entity_normal, dot1);
                     struct vector3 add1 = vector3_add(&scalar1, intersecting_ray_direction);
                     struct vector3 scalar2 = vector3_multiply(&add1, 2);
                     struct vector3 add2 = vector3_add(&y, &scalar2);
@@ -548,7 +300,7 @@ static struct color get_color_at(struct vector3 *intersection_position, struct v
                     if (specular > 0)
                     {
 
-                        struct color shine = color_scalar(&lights[i]->color, pow(specular, 10) * winning_object_color.special);
+                        struct color shine = color_scalar(&lights[i]->color, pow(specular, 10) * winning_entity_color.special);
 
                         final_color = color_add(&final_color, &shine);
 
@@ -568,7 +320,7 @@ static struct color get_color_at(struct vector3 *intersection_position, struct v
 
 }
 
-void render(unsigned int w, unsigned int h, struct bmp_color *data, struct camera *camera, unsigned int nobjects, struct object *objects[], unsigned int nlights, struct source *lights[])
+void render(unsigned int w, unsigned int h, struct bmp_color *data, struct camera *camera, unsigned int nentities, struct entity *entities[], unsigned int nlights, struct source *lights[])
 {
 
     double intersections[128];
@@ -623,10 +375,10 @@ void render(unsigned int w, unsigned int h, struct bmp_color *data, struct camer
             camray.origin = camera->position;
             camray.direction = vector3_normalize(&c);
 
-            for (i = 0; i < nobjects; i++)
-                intersections[i] = objects[i]->find_intersection(objects[i], &camray);
+            for (i = 0; i < nentities; i++)
+                intersections[i] = entities[i]->find_intersection(entities[i], &camray);
 
-            int index = find_closest(intersections, nobjects);
+            int index = find_closest(intersections, nentities);
 
             if (index == -1)
             {
@@ -645,7 +397,7 @@ void render(unsigned int w, unsigned int h, struct bmp_color *data, struct camer
 
                     struct vector3 q = vector3_multiply(&camray.direction, intersections[index]);
                     struct vector3 intersection_position = vector3_add(&camray.origin, &q);
-                    struct color intersection_color = get_color_at(&intersection_position, &camray.direction, index, nobjects, objects, nlights, lights, accuracy, ambientlight);
+                    struct color intersection_color = get_color_at(&intersection_position, &camray.direction, index, nentities, entities, nlights, lights, accuracy, ambientlight);
 
                     current->r = intersection_color.r;
                     current->g = intersection_color.g;
@@ -694,16 +446,16 @@ int main(int argc, char **argv)
     struct vector3 camdown = vector3_crossproduct(&camright, &camdir);
     struct camera camera = {campos, camdir, camright, camdown};
 
-    struct light light00 = {{white, light_get_position}, {-7.0, 10.0, -10.0}};
+    struct light light00 = {{white, {-7.0, 10.0, -10.0}}};
     struct sphere sphere00 = {{green, sphere_get_normal_at, sphere_find_intersection}, origin, 1.0};
     struct sphere sphere01 = {{pink, sphere_get_normal_at, sphere_find_intersection}, new_sphere_location, 0.5};
     struct plane plane00 = {{brown, plane_get_normal_at, plane_find_intersection}, originy, -1.0};
 
-    struct object *objects[] = {&sphere00.base, &sphere01.base, &plane00.base};
+    struct entity *entities[] = {&sphere00.base, &sphere01.base, &plane00.base};
     struct source *lights[] = {&light00.base};
 
-    render(w, h, data, &camera, 3, objects, 1, lights);
-    save("scene.bmp", w, h, dpi, w * h, data);
+    render(w, h, data, &camera, 3, entities, 1, lights);
+    bmp_save("scene.bmp", w, h, dpi, w * h, data);
     free(data);
 
     return 0;
