@@ -11,7 +11,7 @@ double color_brightness(struct color *color)
 struct color color_scalar(struct color *color, double scalar)
 {
 
-    struct color c = {color->r * scalar, color->g * scalar, color->b * scalar, color->special};
+    struct color c = {color->r * scalar, color->g * scalar, color->b * scalar};
 
     return c;
 
@@ -20,7 +20,7 @@ struct color color_scalar(struct color *color, double scalar)
 struct color color_add(struct color *c1, struct color *c2)
 {
 
-    struct color c = {c1->r + c2->r, c1->g + c2->g, c1->b + c2->b, c1->special};
+    struct color c = {c1->r + c2->r, c1->g + c2->g, c1->b + c2->b};
 
     return c;
 
@@ -29,7 +29,7 @@ struct color color_add(struct color *c1, struct color *c2)
 struct color color_multiply(struct color *c1, struct color *c2)
 {
 
-    struct color c = {c1->r * c2->r, c1->g * c2->g, c1->b * c2->b, c1->special};
+    struct color c = {c1->r * c2->r, c1->g * c2->g, c1->b * c2->b};
 
     return c;
 
@@ -38,7 +38,7 @@ struct color color_multiply(struct color *c1, struct color *c2)
 struct color color_average(struct color *c1, struct color *c2)
 {
 
-    struct color c = {(c1->r + c2->r) / 2, (c1->g + c2->g) / 2, (c1->b + c2->b) / 2, c1->special};
+    struct color c = {(c1->r + c2->r) / 2, (c1->g + c2->g) / 2, (c1->b + c2->b) / 2};
 
     return c;
 
