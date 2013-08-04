@@ -417,8 +417,34 @@ static struct color get_color_at(struct vector3 *intersection_position, struct v
 
     struct color winning_object_color = objects[index]->color;
     struct vector3 winning_object_normal = objects[index]->get_normal_at(objects[index], intersection_position);
-    struct color final_color = color_scalar(&winning_object_color, ambientlight);
     unsigned int i;
+
+    if (winning_object_color.special == 2)
+    {
+
+        int square = (int)floor(intersection_position->x) + (int)floor(intersection_position->z);
+
+        if ((square % 2) == 0)
+        {
+
+            winning_object_color.r = 0.0;
+            winning_object_color.g = 0.0;
+            winning_object_color.b = 0.0;
+
+        }
+
+        else
+        {
+
+            winning_object_color.r = 1.0;
+            winning_object_color.g = 1.0;
+            winning_object_color.b = 1.0;
+
+        }
+
+    }
+
+    struct color final_color = color_scalar(&winning_object_color, ambientlight);
 
     for (i = 0; i < nlights; i++)
     {
@@ -507,6 +533,7 @@ void render(unsigned int w, unsigned int h, struct bmp_color *data, struct camer
 
     struct color black = {0.0, 0.0, 0.0, 0.0};
     double *intersections = malloc(sizeof (double) * nobjects);
+    double *intersections2 = malloc(sizeof (double) * nobjects);
     double aspectratio = (double)w / (double)h;
     double ambientlight = 0.2;
     double accuracy = 0.000001;
@@ -574,16 +601,12 @@ void render(unsigned int w, unsigned int h, struct bmp_color *data, struct camer
             else
             {
 
-                current->r = objects[index]->color.r;
-                current->g = objects[index]->color.g;
-                current->b = objects[index]->color.b;
-
                 if (intersections[index] > accuracy)
                 {
 
                     struct vector3 q = vector3_multiply(&camray.direction, intersections[index]);
                     struct vector3 intersection_position = vector3_add(&camray.origin, &q);
-                    struct color intersection_color = get_color_at(&intersection_position, &camray.direction, index, nobjects, objects, nlights, lights, accuracy, ambientlight, intersections);
+                    struct color intersection_color = get_color_at(&intersection_position, &camray.direction, index, nobjects, objects, nlights, lights, accuracy, ambientlight, intersections2);
 
                     current->r = intersection_color.r;
                     current->g = intersection_color.g;
@@ -616,7 +639,7 @@ int main(int argc, char **argv)
     struct color green = {0.5, 1.0, 0.5, 0.3};
     struct color gray = {0.5, 0.5, 0.5, 0.0};
     struct color black = {0.0, 0.0, 0.0, 0.0};
-    struct color brown = {0.5, 0.25, 0.25, 0.0};
+    struct color brown = {0.5, 0.25, 0.25, 2.0};
     struct vector3 lookat = origin;
     struct vector3 campos = {3.0, 1.5, -4.0};
     struct vector3 diff_btw = vector3_subtract(&campos, &lookat);
