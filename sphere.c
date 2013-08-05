@@ -26,20 +26,28 @@ double sphere_find_intersection(struct entity *self, struct ray *r)
 {
 
     struct sphere *s = (struct sphere *)self;
-    double b = (2 * (r->origin.x - s->center.x) * r->direction.x) + (2 * (r->origin.y - s->center.y) * r->direction.y) + (2 * (r->origin.z - s->center.z) * r->direction.z);
-    double c = pow(r->origin.x - s->center.x, 2) + pow(r->origin.y - s->center.y, 2) + pow(r->origin.z - s->center.z, 2) - (s->radius * s->radius);
-    double discriminant = b * b - 4 * c;
-    double root;
+    struct vector3 v = s->center;
+    double b, d, t;
 
-    if (discriminant <= 0)
+    vector3_subtract(&v, &r->origin);
+
+    b = vector3_dotproduct(&r->direction, &v);
+    d = b * b - vector3_dotproduct(&v, &v) + s->radius * s->radius;
+
+    if (d < 0)
         return -1;
 
-    root = ((-1 * b - sqrt(discriminant)) / 2) - 0.000001;
+    t = b - sqrt(d);
 
-    if (root > 0)
-        return root;
+    if (t > 0.000001)
+        return t;
 
-    return ((sqrt(discriminant) - b) / 2) - 0.000001;
+    t = b + sqrt(d);
+
+    if (t > 0.000001)
+        return t;
+
+    return -1;
 
 }
 
