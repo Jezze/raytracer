@@ -12,8 +12,8 @@
 #include "sphere.h"
 #include "light.h"
 #include "backend.h"
-#include "bmp.h"
 #include "scene.h"
+#include "bmp.h"
 
 int main(int argc, char **argv)
 {
