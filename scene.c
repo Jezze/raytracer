@@ -95,8 +95,11 @@ struct color scene_get_color(struct scene *scene, struct ray *r, struct entity *
         if (index != -1)
         {
 
-            struct ray rr = {ray.direction, ray.direction};
+            struct ray rr;
             struct color c;
+
+            rr.origin = ray.direction;
+            rr.direction = ray.direction;
 
             vector3_scalar(&rr.origin, intersections[index]);
             vector3_add(&rr.origin, &r->origin);
@@ -127,8 +130,11 @@ struct color scene_get_color(struct scene *scene, struct ray *r, struct entity *
         if (angle > 0)
         {
 
-            struct ray ray = {r->origin, scene->lights.items[i]->position};
+            struct ray ray;
             unsigned int shadowed = 0;
+
+            ray.origin = r->origin;
+            ray.direction = scene->lights.items[i]->position;
 
             vector3_add(&ray.direction, &direction);
             vector3_normalize(&ray.direction);
@@ -202,31 +208,32 @@ void scene_render(struct scene *scene, struct backend *backend, struct color *da
 {
 
     double intersections[128];
+    struct color *current = data;
     struct color black = {0.0, 0.0, 0.0};
-    double aspectratio = (double)backend->w / (double)backend->h;
+    double ratio = (double)backend->w / (double)backend->h;
     unsigned int diff = backend->w - backend->h;
     unsigned int x;
     unsigned int y;
-    unsigned int i;
 
-    for (x = 0; x < backend->w; x++)
+    for (y = 0; y < backend->h; y++)
     {
 
-        for (y = 0; y < backend->h; y++)
+        for (x = 0; x < backend->w; x++)
         {
 
-            struct color *current = &data[y * backend->w + x];
-            struct color color = black;
-            struct ray ray = {scene->camera.position, scene->camera.right};
+            struct ray ray;
             struct vector3 b = scene->camera.down;
             double xa = ((x + 0.5) / backend->w);
             double ya = (((backend->h - y) + 0.5) / backend->h);
             int index;
 
+            ray.origin = scene->camera.position;
+            ray.direction = scene->camera.right;
+
             if (diff > 0)
-                xa = xa * aspectratio - (diff / (double)backend->h / 2.0);
+                xa = xa * ratio - (diff / (double)backend->h / 2.0);
             else
-                ya = ya / aspectratio + (diff / (double)backend->w / 2.0);
+                ya = ya / ratio + (diff / (double)backend->w / 2.0);
 
             vector3_scalar(&ray.direction, xa - 0.5);
             vector3_scalar(&b, ya - 0.5);
@@ -243,13 +250,18 @@ void scene_render(struct scene *scene, struct backend *backend, struct color *da
                 vector3_scalar(&ray.direction, intersections[index]);
                 vector3_add(&ray.origin, &ray.direction);
 
-                color = scene_get_color(scene, &ray, scene->entities.items[index]);
+                *current = scene_get_color(scene, &ray, scene->entities.items[index]);
 
             }
 
-            current->r = color.r;
-            current->g = color.g;
-            current->b = color.b;
+            else
+            {
+
+                *current = black;
+
+            }
+
+            current++;
 
         }
 

@@ -39,7 +39,11 @@ void vector3_negative(struct vector3 *v)
 struct vector3 vector3_crossproduct(struct vector3 *v1, struct vector3 *v2)
 {
 
-    struct vector3 t = {v1->y * v2->z - v1->z * v2->y, v1->z * v2->x - v1->x * v2->z, v1->x * v2->y - v1->y * v2->x};
+    struct vector3 t;
+    
+    t.x = v1->y * v2->z - v1->z * v2->y;
+    t.y = v1->z * v2->x - v1->x * v2->z;
+    t.z = v1->x * v2->y - v1->y * v2->x;
 
     return t;
 

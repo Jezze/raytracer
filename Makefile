@@ -1,3 +1,4 @@
+CFLAGS+=-pedantic
 LDFLAGS+=-lm
 OBJ=bmp.o camera.o color.o main.o material.o plane.o scene.o sphere.o vector3.o
 

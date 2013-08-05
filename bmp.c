@@ -59,7 +59,10 @@ void bmp_save(const char *name, int w, int h, int dpi, unsigned int count, struc
         double r = (data[i].r) * 255;
         double g = (data[i].g) * 255;
         double b = (data[i].b) * 255;
-        unsigned char color[3] = {(int)floor(b), (int)floor(g), (int)floor(r)};
+        unsigned char color[3];
+        color[0] = (int)floor(b);
+        color[1] = (int)floor(g);
+        color[2] = (int)floor(r);
 
         fwrite(color, 1, 3, f);
 
