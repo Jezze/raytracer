@@ -243,6 +243,7 @@ static struct color get_color_at(struct ray *r, struct scene *scene, struct enti
 
         struct vector3 scalar = normal;
         struct ray ray = *r;
+        int index;
 
         vector3_negative(&ray.direction);
         vector3_scalar(&scalar, vector3_dotproduct(&scalar, &ray.direction));
@@ -252,7 +253,7 @@ static struct color get_color_at(struct ray *r, struct scene *scene, struct enti
         vector3_normalize(&ray.direction);
         fill_intersections(intersections, scene, &ray);
 
-        int index = find_closest(intersections, scene->entities.count);
+        index = find_closest(intersections, scene->entities.count);
 
         if (index != -1)
         {
@@ -264,6 +265,7 @@ static struct color get_color_at(struct ray *r, struct scene *scene, struct enti
             vector3_add(&rr.origin, &r->origin);
 
             c = get_color_at(&rr, scene, scene->entities.items[index]);
+
             color_scalar(&c, entity->reflection);
             color_add(&color, &c);
 
@@ -324,6 +326,7 @@ static struct color get_color_at(struct ray *r, struct scene *scene, struct enti
 
                     struct vector3 scalar = normal;
                     struct vector3 y = r->direction;
+                    double specular;
 
                     vector3_negative(&y);
                     vector3_scalar(&scalar, vector3_dotproduct(&scalar, &y));
@@ -332,7 +335,7 @@ static struct color get_color_at(struct ray *r, struct scene *scene, struct enti
                     vector3_add(&y, &scalar);
                     vector3_normalize(&y);
 
-                    double specular = vector3_dotproduct(&y, &direction);
+                    specular = vector3_dotproduct(&y, &direction);
 
                     if (specular > 0)
                     {
@@ -364,10 +367,9 @@ void render(struct scene *scene, struct backend *backend, struct bmp_color *data
     double intersections[128];
     struct color black = {0.0, 0.0, 0.0};
     double aspectratio = (double)backend->w / (double)backend->h;
+    unsigned int diff = backend->w - backend->h;
     unsigned int x;
     unsigned int y;
-    double xa;
-    double ya;
     unsigned int i;
 
     for (x = 0; x < backend->w; x++)
@@ -377,70 +379,40 @@ void render(struct scene *scene, struct backend *backend, struct bmp_color *data
         {
 
             struct bmp_color *current = &data[y * backend->w + x];
-
-            if (backend->w > backend->h)
-            {
-
-                xa = ((x + 0.5) / backend->w) * aspectratio - (((backend->w - backend->h) / (double)backend->h) / 2);
-                ya = ((backend->h - y) + 0.5) / backend->h;
-
-            }
-
-            else if (backend->h > backend->w)
-            {
-
-                xa = (x + 0.5) / backend->w;
-                ya = (((backend->h - y) + 0.5) / backend->h) / aspectratio - (((backend->h - backend->w) / (double)backend->w) / 2);
-
-            }
-
-            else
-            {
-
-                xa = (x + 0.5) / backend->w;
-                ya = ((backend->h - y) + 0.5) / backend->h;
-
-            }
-
-            struct ray camray;
+            struct color color = black;
+            struct ray ray = {scene->camera.position, scene->camera.right};
             struct vector3 b = scene->camera.down;
+            double xa = ((x + 0.5) / backend->w);
+            double ya = (((backend->h - y) + 0.5) / backend->h);
+            int index;
 
-            camray.origin = scene->camera.position;
-            camray.direction = scene->camera.right;
-
-            vector3_scalar(&camray.direction, xa - 0.5);
-            vector3_scalar(&b, ya - 0.5);
-            vector3_add(&camray.direction, &b);
-            vector3_add(&camray.direction, &scene->camera.direction);
-            vector3_normalize(&camray.direction);
-            fill_intersections(intersections, scene, &camray);
-
-            int index = find_closest(intersections, scene->entities.count);
-
-            if (index == -1)
-            {
-
-                current->r = black.r;
-                current->g = black.g;
-                current->b = black.b;
-
-            }
-
+            if (diff > 0)
+                xa = xa * aspectratio - (diff / (double)backend->h / 2.0);
             else
+                ya = ya / aspectratio + (diff / (double)backend->w / 2.0);
+
+            vector3_scalar(&ray.direction, xa - 0.5);
+            vector3_scalar(&b, ya - 0.5);
+            vector3_add(&ray.direction, &b);
+            vector3_add(&ray.direction, &scene->camera.direction);
+            vector3_normalize(&ray.direction);
+            fill_intersections(intersections, scene, &ray);
+
+            index = find_closest(intersections, scene->entities.count);
+
+            if (index != -1)
             {
 
-                struct color color;
+                vector3_scalar(&ray.direction, intersections[index]);
+                vector3_add(&ray.origin, &ray.direction);
 
-                vector3_scalar(&camray.direction, intersections[index]);
-                vector3_add(&camray.origin, &camray.direction);
-
-                color = get_color_at(&camray, scene, scene->entities.items[index]);
-
-                current->r = color.r;
-                current->g = color.g;
-                current->b = color.b;
+                color = get_color_at(&ray, scene, scene->entities.items[index]);
 
             }
+
+            current->r = color.r;
+            current->g = color.g;
+            current->b = color.b;
 
         }
 
@@ -459,8 +431,11 @@ void setup_camera(struct camera *camera, struct vector3 *origin, struct vector3 
     vector3_subtract(&direction, origin);
     vector3_negative(&direction);
     vector3_normalize(&direction);
+
     right = vector3_crossproduct(originy, &direction);
+
     vector3_normalize(&right);
+
     down = vector3_crossproduct(&right, &direction);
 
     camera->position = position;
