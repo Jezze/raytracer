@@ -1,9 +1,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include "color.h"
 #include "bmp.h"
 
-void bmp_save(const char *name, int w, int h, int dpi, unsigned int count, struct bmp_color *data)
+void bmp_save(const char *name, int w, int h, int dpi, unsigned int count, struct color *data)
 {
 
     FILE *f;
@@ -54,7 +55,7 @@ void bmp_save(const char *name, int w, int h, int dpi, unsigned int count, struc
     for (i = 0; i < count; i++)
     {
 
-        struct bmp_color rgb = data[i];
+        struct color rgb = data[i];
         double r = (data[i].r) * 255;
         double g = (data[i].g) * 255;
         double b = (data[i].b) * 255;
