@@ -2,6 +2,7 @@
 #include <math.h>
 #include "vector3.h"
 #include "color.h"
+#include "material.h"
 #include "ray.h"
 #include "entity.h"
 #include "sphere.h"

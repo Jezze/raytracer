@@ -2,10 +2,10 @@
 #include <math.h>
 #include "vector3.h"
 #include "color.h"
+#include "material.h"
 #include "ray.h"
 #include "entity.h"
 #include "camera.h"
-#include "texture.h"
 #include "plane.h"
 #include "sphere.h"
 #include "light.h"
@@ -67,15 +67,15 @@ struct color scene_get_color(struct scene *scene, struct ray *r, struct entity *
     double intersections[128];
     double accuracy = 0.000001;
     struct vector3 normal = entity->find_normal(entity, &r->origin);
-    struct color color = entity->color;
+    struct color color = entity->material.diffuse;
     unsigned int i;
 
-    if (entity->texture == 1)
-        texture_checkerboard(entity, &r->origin);
+    if (entity->material.type == MATERIAL_TYPE_CHECKERS)
+        material_checkers(&entity->material, &r->origin);
 
     color_scalar(&color, scene->ambientlight);
 
-    if (entity->reflection > 0 && entity->reflection <= 1)
+    if (entity->material.reflection > 0 && entity->material.reflection <= 1)
     {
 
         struct vector3 scalar = normal;
@@ -103,7 +103,7 @@ struct color scene_get_color(struct scene *scene, struct ray *r, struct entity *
 
             c = scene_get_color(scene, &rr, scene->entities.items[index]);
 
-            color_scalar(&c, entity->reflection);
+            color_scalar(&c, entity->material.reflection);
             color_add(&color, &c);
 
         }
@@ -152,13 +152,13 @@ struct color scene_get_color(struct scene *scene, struct ray *r, struct entity *
             if (shadowed == 0)
             {
 
-                struct color c = entity->color;
+                struct color c = entity->material.diffuse;
 
                 color_multiply(&c, &scene->lights.items[i]->color);
                 color_scalar(&c, angle);
                 color_add(&color, &c);
 
-                if (entity->reflection > 0 && entity->reflection <= 1)
+                if (entity->material.reflection > 0 && entity->material.reflection <= 1)
                 {
 
                     struct vector3 scalar = normal;
@@ -179,7 +179,7 @@ struct color scene_get_color(struct scene *scene, struct ray *r, struct entity *
 
                         struct color shine = scene->lights.items[i]->color;
 
-                        color_scalar(&shine, pow(specular, 10) * entity->reflection);
+                        color_scalar(&shine, pow(specular, 10) * entity->material.reflection);
                         color_add(&color, &shine);
 
                     }
