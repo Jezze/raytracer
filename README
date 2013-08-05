@@ -1,0 +1,16 @@
+# RAYTRACER
+
+## ABOUT
+
+Just a simple raytracer that prints to a bitmap.
+
+## BUILDING
+
+Compile:
+
+    $ make
+
+Clean:
+
+    $ make clean
+
