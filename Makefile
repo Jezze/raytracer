@@ -1,7 +1,7 @@
 LDFLAGS+=-lm
 OBJ=bmp.o camera.o color.o main.o plane.o scene.o sphere.o texture.o vector3.o
 
-all: raytracer clean
+all: raytracer
 
 .c.o:
 	@echo CC $<
