@@ -17,9 +17,6 @@
 #include "bmp.h"
 #include "glfw.h"
 
-#define WIDTH                           320
-#define HEIGHT                          200
-
 enum output
 {
 
@@ -28,10 +25,20 @@ enum output
 
 };
 
+void usage()
+{
+
+    fputs("usage: raytracer WIDTH HEIGHT\n", stderr);
+    exit(EXIT_FAILURE);
+
+}
+
 int main(int argc, char **argv)
 {
 
     enum output output = OUTPUT_GLFW;
+    unsigned int width = 640;
+    unsigned int height = 480;
     static struct scene scene;
     struct backend *backend;
     struct vector3 origin = {0.0, 0.0, 0.0};
@@ -40,7 +47,7 @@ int main(int argc, char **argv)
     struct sphere sphere00 = {{{MATERIAL_TYPE_NORMAL, {0.5, 1.0, 0.5}, 0.4, 0.0}, sphere_find_normal, sphere_find_intersection}, {-1.0, 0.0, 0.0}, 1.0};
     struct sphere sphere01 = {{{MATERIAL_TYPE_NORMAL, {1.0, 0.5, 1.0}, 0.4, 0.0}, sphere_find_normal, sphere_find_intersection}, {2.0, -0.5, 1.5}, 0.5};
     struct plane plane00 = {{{MATERIAL_TYPE_CHECKERS, {0.5, 0.25, 0.25}, 0.0, 0.0}, plane_find_normal, plane_find_intersection}, {0.0, 1.0, 0.0}, -1.0};
-    struct color *data = malloc(sizeof (struct color) * WIDTH * HEIGHT);
+    struct color *data;
 
     scene.ambientlight = 0.1;
     scene.entities.items[0] = &sphere00.base;
@@ -52,24 +59,39 @@ int main(int argc, char **argv)
 
     camera_init(&scene.camera, &origin, &originy);
 
+    if (argc < 3)
+        usage();
+
+    width = strtoul(argv[1], 0, 10);
+
+    if (!width)
+        usage();
+
+    height = strtoul(argv[2], 0, 10);
+
+    if (!height)
+        usage();
+
+    data = malloc(sizeof (struct color) * width * height);
+
     switch (output)
     {
 
         case OUTPUT_BMP:
 
-            backend = bmp_init(WIDTH, HEIGHT);
+            backend = bmp_init(width, height);
 
             break;
 
         case OUTPUT_GLFW:
 
-            backend = glfw_init(WIDTH, HEIGHT);
+            backend = glfw_init(width, height);
 
             break;
 
         default:
 
-            backend = glfw_init(WIDTH, HEIGHT);
+            backend = glfw_init(width, height);
 
             break;
 
