@@ -14,7 +14,7 @@ struct camera
 void camera_init(struct camera *camera, struct vector3 *origin, struct vector3 *originy)
 {
 
-    struct vector3 position = {3.0, 1.5, -4.0};
+    struct vector3 position = {0.0, 1.0, -4.0};
     struct vector3 direction = position;
     struct vector3 right;
     struct vector3 down;

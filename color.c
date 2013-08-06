@@ -50,6 +50,9 @@ void color_clip(struct color *color)
     float all = color->r + color->g + color->b;
     float extra = all - 3.0;
 
+    if (all == 0.0)
+        return;
+
     if (extra > 0.0)
     {
 

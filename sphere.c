@@ -34,7 +34,7 @@ double sphere_find_intersection(struct entity *self, struct ray *r)
     b = vector3_dotproduct(&r->direction, &v);
     d = b * b - vector3_dotproduct(&v, &v) + s->radius * s->radius;
 
-    if (d < 0)
+    if (d <= 0)
         return -1;
 
     t = b - sqrt(d);

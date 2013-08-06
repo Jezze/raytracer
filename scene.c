@@ -203,21 +203,21 @@ struct color scene_get_color(struct scene *scene, struct ray *r, struct entity *
 
 }
 
-void scene_render(struct scene *scene, unsigned int w, unsigned int h, struct color *data)
+void scene_render(struct scene *scene, double w, double h, struct color *data)
 {
 
     double intersections[128];
     struct color *current = data;
     struct color black = {0.0, 0.0, 0.0};
-    double ratio = (double)w / (double)h;
-    unsigned int diff = w - h;
-    unsigned int x;
-    unsigned int y;
+    double ratio = w / h;
+    double diff = w - h;
+    double x;
+    double y;
 
-    for (y = 0; y < h; y++)
+    for (y = 0.0; y < h; y += 1.0)
     {
 
-        for (x = 0; x < w; x++)
+        for (x = 0.0; x < w; x += 1.0)
         {
 
             struct ray ray;
@@ -230,9 +230,9 @@ void scene_render(struct scene *scene, unsigned int w, unsigned int h, struct co
             ray.direction = scene->camera.right;
 
             if (diff > 0)
-                xa = xa * ratio - (diff / (double)h / 2.0);
+                xa = xa * ratio - (diff / h / 2.0);
             else
-                ya = ya / ratio + (diff / (double)w / 2.0);
+                ya = ya / ratio + (diff / w / 2.0);
 
             vector3_scalar(&ray.direction, xa - 0.5);
             vector3_scalar(&b, ya - 0.5);

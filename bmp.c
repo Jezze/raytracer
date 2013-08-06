@@ -41,7 +41,7 @@ static void render(struct scene *scene, struct color *data)
     unsigned int s = 4 * count;
     unsigned int filesize = 54 + s;
     unsigned int i;
-    double factor = 39.375;
+    float factor = 39.375;
     int m = (int)factor;
     int ppm = backend.dpi * m;
     unsigned char bmpfileheader[14] = {'B', 'M', 0, 0, 0, 0, 0, 0, 0, 0, 54, 0, 0, 0};
@@ -86,9 +86,9 @@ static void render(struct scene *scene, struct color *data)
     {
 
         struct color rgb = data[i];
-        double r = (data[i].r) * 255;
-        double g = (data[i].g) * 255;
-        double b = (data[i].b) * 255;
+        float r = (data[i].r) * 255;
+        float g = (data[i].g) * 255;
+        float b = (data[i].b) * 255;
         unsigned char color[3];
         color[0] = (int)floor(b);
         color[1] = (int)floor(g);

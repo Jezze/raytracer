@@ -21,6 +21,9 @@ void vector3_normalize(struct vector3 *v)
 
     double magnitude = vector3_magnitude(v);
 
+    if (magnitude == 0.0)
+        return;
+
     v->x = v->x / magnitude;
     v->y = v->y / magnitude;
     v->z = v->z / magnitude;
