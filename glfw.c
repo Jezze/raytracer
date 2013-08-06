@@ -62,8 +62,20 @@ static void stop()
 static void render(struct scene *scene, struct color *data)
 {
 
+    double speedx = 0.01;
+    double speedy = 0.01;
+
     while (!glfwWindowShouldClose(backend.window))
     {
+
+        scene->camera.direction.x += speedx;
+        scene->camera.direction.y += speedy;
+
+        if (scene->camera.direction.x >= 0.4 || scene->camera.direction.x <= -0.4)
+            speedx = -speedx;
+
+        if (scene->camera.direction.y >= 0.4 || scene->camera.direction.y <= -0.4)
+            speedy = -speedy;
 
         scene_render(scene, backend.base.w, backend.base.h, data);
 
