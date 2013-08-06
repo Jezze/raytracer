@@ -9,7 +9,6 @@
 #include "plane.h"
 #include "sphere.h"
 #include "light.h"
-#include "backend.h"
 #include "scene.h"
 
 static int find_closest(double *intersection, unsigned int count)
@@ -204,36 +203,36 @@ struct color scene_get_color(struct scene *scene, struct ray *r, struct entity *
 
 }
 
-void scene_render(struct scene *scene, struct backend *backend, struct color *data)
+void scene_render(struct scene *scene, unsigned int w, unsigned int h, struct color *data)
 {
 
     double intersections[128];
     struct color *current = data;
     struct color black = {0.0, 0.0, 0.0};
-    double ratio = (double)backend->w / (double)backend->h;
-    unsigned int diff = backend->w - backend->h;
+    double ratio = (double)w / (double)h;
+    unsigned int diff = w - h;
     unsigned int x;
     unsigned int y;
 
-    for (y = 0; y < backend->h; y++)
+    for (y = 0; y < h; y++)
     {
 
-        for (x = 0; x < backend->w; x++)
+        for (x = 0; x < w; x++)
         {
 
             struct ray ray;
             struct vector3 b = scene->camera.down;
-            double xa = ((x + 0.5) / backend->w);
-            double ya = (((backend->h - y) + 0.5) / backend->h);
+            double xa = ((x + 0.5) / w);
+            double ya = (((h - y) + 0.5) / h);
             int index;
 
             ray.origin = scene->camera.position;
             ray.direction = scene->camera.right;
 
             if (diff > 0)
-                xa = xa * ratio - (diff / (double)backend->h / 2.0);
+                xa = xa * ratio - (diff / (double)h / 2.0);
             else
-                ya = ya / ratio + (diff / (double)backend->w / 2.0);
+                ya = ya / ratio + (diff / (double)w / 2.0);
 
             vector3_scalar(&ray.direction, xa - 0.5);
             vector3_scalar(&b, ya - 0.5);

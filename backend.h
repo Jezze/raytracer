@@ -3,6 +3,8 @@ struct backend
 
     unsigned int w;
     unsigned int h;
-    unsigned int dpi;
+    void (*start)();
+    void (*stop)();
+    void (*render)(struct scene *scene, struct color *color);
 
 };

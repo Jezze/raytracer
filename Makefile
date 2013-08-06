@@ -1,6 +1,6 @@
 CFLAGS+=-pedantic
-LDFLAGS+=-lm
-OBJ=bmp.o camera.o color.o main.o material.o plane.o scene.o sphere.o vector3.o
+LDFLAGS+=-lm -lglfw -lGL
+OBJ=bmp.o camera.o color.o glfw.o main.o material.o plane.o scene.o sphere.o vector3.o
 
 all: raytracer
 

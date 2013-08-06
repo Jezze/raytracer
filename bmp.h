@@ -1,1 +1,1 @@
-void bmp_save(const char *name, int w, int h, int dpi, unsigned int count, struct color *data);
+struct backend *bmp_init(unsigned int w, unsigned int h);

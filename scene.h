@@ -10,4 +10,4 @@ struct scene
 
 void scene_fill_intersections(struct scene *scene, struct ray *ray, double *intersections);
 struct color scene_get_color(struct scene *scene, struct ray *r, struct entity *entity);
-void scene_render(struct scene *scene, struct backend *backend, struct color *data);
+void scene_render(struct scene *scene, unsigned int w, unsigned int h, struct color *data);

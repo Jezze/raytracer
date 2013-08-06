@@ -1,14 +1,14 @@
 #include <stdlib.h>
 #include "color.h"
 
-double color_brightness(struct color *color)
+float color_brightness(struct color *color)
 {
 
     return (color->r + color->g + color->b) / 3.0;
 
 }
 
-void color_scalar(struct color *color, double scalar)
+void color_scalar(struct color *color, float scalar)
 {
 
     color->r *= scalar;
@@ -47,8 +47,8 @@ void color_average(struct color *c1, struct color *c2)
 void color_clip(struct color *color)
 {
 
-    double all = color->r + color->g + color->b;
-    double extra = all - 3.0;
+    float all = color->r + color->g + color->b;
+    float extra = all - 3.0;
 
     if (extra > 0.0)
     {

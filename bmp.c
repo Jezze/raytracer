@@ -1,19 +1,50 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <GLFW/glfw3.h>
+#include "vector3.h"
 #include "color.h"
+#include "material.h"
+#include "ray.h"
+#include "entity.h"
+#include "camera.h"
+#include "plane.h"
+#include "sphere.h"
+#include "light.h"
+#include "scene.h"
+#include "backend.h"
 #include "bmp.h"
 
-void bmp_save(const char *name, int w, int h, int dpi, unsigned int count, struct color *data)
+struct
+{
+
+    struct backend base;
+    unsigned int dpi;
+
+} backend;
+
+static void start()
+{
+
+}
+
+static void stop()
+{
+
+}
+
+static void render(struct scene *scene, struct color *data)
 {
 
     FILE *f;
+    char *name = "scene.bmp";
+    unsigned int count = backend.base.w * backend.base.h;
     unsigned int s = 4 * count;
     unsigned int filesize = 54 + s;
     unsigned int i;
     double factor = 39.375;
     int m = (int)factor;
-    int ppm = dpi * m;
+    int ppm = backend.dpi * m;
     unsigned char bmpfileheader[14] = {'B', 'M', 0, 0, 0, 0, 0, 0, 0, 0, 54, 0, 0, 0};
     unsigned char bmpinfoheader[40] = {40, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 24, 0};
 
@@ -22,15 +53,15 @@ void bmp_save(const char *name, int w, int h, int dpi, unsigned int count, struc
     bmpfileheader[4] = (unsigned char)(filesize >> 16);
     bmpfileheader[5] = (unsigned char)(filesize >> 24);
 
-    bmpinfoheader[4] = (unsigned char)(w);
-    bmpinfoheader[5] = (unsigned char)(w >> 8);
-    bmpinfoheader[6] = (unsigned char)(w >> 16);
-    bmpinfoheader[7] = (unsigned char)(w >> 24);
+    bmpinfoheader[4] = (unsigned char)(backend.base.w);
+    bmpinfoheader[5] = (unsigned char)(backend.base.w >> 8);
+    bmpinfoheader[6] = (unsigned char)(backend.base.w >> 16);
+    bmpinfoheader[7] = (unsigned char)(backend.base.w >> 24);
 
-    bmpinfoheader[8] = (unsigned char)(h);
-    bmpinfoheader[9] = (unsigned char)(h >> 8);
-    bmpinfoheader[10] = (unsigned char)(h >> 16);
-    bmpinfoheader[11] = (unsigned char)(h >> 24);
+    bmpinfoheader[8] = (unsigned char)(backend.base.h);
+    bmpinfoheader[9] = (unsigned char)(backend.base.h >> 8);
+    bmpinfoheader[10] = (unsigned char)(backend.base.h >> 16);
+    bmpinfoheader[11] = (unsigned char)(backend.base.h >> 24);
 
     bmpinfoheader[21] = (unsigned char)(s);
     bmpinfoheader[22] = (unsigned char)(s >> 8);
@@ -69,6 +100,20 @@ void bmp_save(const char *name, int w, int h, int dpi, unsigned int count, struc
     }
 
     fclose(f);
+
+}
+
+struct backend *bmp_init(unsigned int w, unsigned int h)
+{
+
+    backend.base.w = w;
+    backend.base.h = h;
+    backend.base.start = start;
+    backend.base.stop = stop;
+    backend.base.render = render;
+    backend.dpi = 72;
+
+    return &backend.base;
 
 }
 

@@ -1,14 +1,14 @@
 struct color
 {
 
-    double r;
-    double g;
-    double b;
+    float r;
+    float g;
+    float b;
 
 };
 
-double color_brightness(struct color *color);
-void color_scalar(struct color *color, double scalar);
+float color_brightness(struct color *color);
+void color_scalar(struct color *color, float scalar);
 void color_add(struct color *c1, struct color *c2);
 void color_multiply(struct color *c1, struct color *c2);
 void color_average(struct color *c1, struct color *c2);
