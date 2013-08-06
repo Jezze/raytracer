@@ -20,9 +20,18 @@
 #define WIDTH                           320
 #define HEIGHT                          200
 
+enum output
+{
+
+    OUTPUT_BMP                          = 1,
+    OUTPUT_GLFW                         = 2
+
+};
+
 int main(int argc, char **argv)
 {
 
+    enum output output = OUTPUT_GLFW;
     static struct scene scene;
     struct backend *backend;
     struct vector3 origin = {0.0, 0.0, 0.0};
@@ -43,12 +52,32 @@ int main(int argc, char **argv)
 
     camera_init(&scene.camera, &origin, &originy);
 
-    backend = glfw_init(WIDTH, HEIGHT);
+    switch (output)
+    {
+
+        case OUTPUT_BMP:
+
+            backend = bmp_init(WIDTH, HEIGHT);
+
+            break;
+
+        case OUTPUT_GLFW:
+
+            backend = glfw_init(WIDTH, HEIGHT);
+
+            break;
+
+        default:
+
+            backend = glfw_init(WIDTH, HEIGHT);
+
+            break;
+
+    }
 
     backend->start();
     backend->render(&scene, data);
     backend->stop();
-
     free(data);
 
     return 0;
