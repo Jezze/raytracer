@@ -1,6 +1,7 @@
 enum material_type
 {
 
+    MATERIAL_TYPE_NORMAL                = 0,
     MATERIAL_TYPE_GOURAD                = 1,
     MATERIAL_TYPE_NOICE                 = 2,
     MATERIAL_TYPE_CHECKERS              = 3
