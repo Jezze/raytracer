@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-#include <GLFW/glfw3.h>
 #include "vector3.h"
 #include "color.h"
 #include "material.h"
